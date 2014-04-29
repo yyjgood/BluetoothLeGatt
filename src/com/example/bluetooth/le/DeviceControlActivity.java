@@ -26,6 +26,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -35,6 +36,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.*;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -65,6 +67,9 @@ public class DeviceControlActivity extends Activity {
 
     private final String LIST_NAME = "NAME";
     private final String LIST_UUID = "UUID";
+    private final String FILE_NAME = "data.txt";
+
+
 
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -108,8 +113,15 @@ public class DeviceControlActivity extends Activity {
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
                 // Show all the supported services and characteristics on the user interface.
                 displayGattServices(mBluetoothLeService.getSupportedGattServices());
+
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
                 displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                try {
+                    writeData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
             }
         }
     };
@@ -118,6 +130,7 @@ public class DeviceControlActivity extends Activity {
     // demonstrates 'Read' and 'Notify' features.  See
     // http://d.android.com/reference/android/bluetooth/BluetoothGatt.html for the complete
     // list of supported characteristic features.
+
     private final ExpandableListView.OnChildClickListener servicesListClickListner =
             new ExpandableListView.OnChildClickListener() {
                 @Override
@@ -188,11 +201,7 @@ public class DeviceControlActivity extends Activity {
             byte[] send = message.getBytes();
             myCharacteristic.setValue(send);
             mBluetoothLeService.writewriteCharacteristic(myCharacteristic);
-            // mChatService.write(send); TODO writeCharacteristic
 
-            // Reset out string buffer to zero and clear the edit text field
-//            mOutStringBuffer.setLength(0);
-//            mOutEditText.setText(mOutStringBuffer);
         }
     }
 
@@ -301,11 +310,38 @@ public class DeviceControlActivity extends Activity {
         });
     }
 
+    /**
+     * @athor yyj
+     * @param data
+     */
     private void displayData(String data) {
         if (data != null) {
             mDataField.setText(data);
         }
     }
+
+    /**
+     * @author yyj
+     * @param data
+     * 写入数据到文件 FILE_NAME
+     */
+    private void writeData(String data) throws IOException {
+
+        try {
+            if (Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+                File targetFile = new File(Environment.getExternalStorageDirectory(), FILE_NAME);
+                RandomAccessFile raf = new RandomAccessFile(targetFile, "rw");
+                raf.seek(targetFile.length());
+                raf.write(data.getBytes());
+                raf.close();
+            }
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
 
     // Demonstrates how to iterate through the supported GATT Services/Characteristics.
     // In this sample, we populate the data structure that is bound to the ExpandableListView
